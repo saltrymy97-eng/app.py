@@ -1,61 +1,47 @@
 import streamlit as st
 import pandas as pd
-from openai import OpenAI
-
-# 1. Setup OpenAI Client using Streamlit Secrets
-# Make sure to add OPENAI_API_KEY in your Streamlit Cloud Secrets
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+import google.generativeai as genai
 
 # Page Configuration
-st.set_page_config(page_title="FinDiagnostix AI", page_icon="📈", layout="centered")
+st.set_page_config(page_title="FinDiagnostix AI", page_icon="📊")
 
-# App Header
-st.title("🧠 FinDiagnostix AI")
+st.title("📊 FinDiagnostix AI")
 st.subheader("Next-Gen Financial Diagnostic Tool")
-st.write("Upload your financial data and let AI handle the analysis.")
 
-# 2. File Uploader Component
-uploaded_file = st.file_uploader("Upload Trial Balance or Bank Statement (CSV/XLSX)", type=['csv', 'xlsx'])
+# Setup Gemini AI
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error("API Key not found. Please check your Streamlit Secrets.")
+
+# File Upload
+uploaded_file = st.file_uploader("Upload your Financial Data (CSV or XLSX)", type=["csv", "xlsx"])
 
 if uploaded_file:
-    # Read Data
-    if uploaded_file.name.endswith('csv'):
+    # Read the data
+    if uploaded_file.name.endswith('.csv'):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
-        
+    
     st.success("File uploaded successfully!")
-    
-    # Display Data Preview
-    with st.expander("👁️ View Uploaded Data"):
-        st.dataframe(df.head(10))
+    st.dataframe(df.head(10)) # Show first 10 rows
 
-    # Convert data summary to string for AI context
-    data_summary = df.describe().to_string()
-
-    # 3. AI Analysis Section
-    st.markdown("---")
-    st.header("🔍 AI Financial Analysis")
-    
-    if st.button("🚀 Run Diagnostic"):
-        with st.spinner('Analyzing financial patterns...'):
+    if st.button("🚀 Run AI Analysis"):
+        with st.spinner("Gemini AI is analyzing your finances..."):
             try:
-                # Prompt Engineering: Asking GPT to act as a Senior Auditor
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a Senior Chartered Accountant and Financial Analyst. Analyze the following data and provide: 1. A summary of financial health. 2. Three actionable insights to improve profit. 3. Detection of any anomalies or risks."},
-                        {"role": "user", "content": f"Financial Data Summary: {data_summary}"}
-                    ]
-                )
+                # Convert data to string for AI
+                data_summary = df.to_string()
+                prompt = f"Act as a professional financial analyst. Analyze these financial figures and provide a clear report in English with: 1. Key Highlights, 2. Potential Risks, and 3. Recommendations for improvement:\n\n{data_summary}"
                 
-                analysis_report = response.choices[0].message.content
-                st.subheader("📝 Professional Analysis Report")
-                st.info(analysis_report)
+                response = model.generate_content(prompt)
                 
+                st.markdown("---")
+                st.markdown("### 🔍 AI Financial Report")
+                st.write(response.text)
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Analysis failed: {e}")
 
-# Footer
 st.markdown("---")
-st.caption("FinDiagnostix v1.0 | Developed by Salem | Powered by OpenAI")
+st.caption("Developed by Salem | Powered by Google Gemini AI (Free Tier)")
