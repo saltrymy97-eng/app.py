@@ -2,46 +2,36 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 
-# Page Configuration
-st.set_page_config(page_title="FinDiagnostix AI", page_icon="📊")
-
+st.set_page_config(page_title="FinDiagnostix AI", page_icon="📈")
 st.title("📊 FinDiagnostix AI")
-st.subheader("Next-Gen Financial Diagnostic Tool")
 
-# Setup Gemini AI
-try:
+# Configure Gemini
+if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except Exception as e:
-    st.error("API Key not found. Please check your Streamlit Secrets.")
+    # Changed to the most stable model name
+    model = genai.GenerativeModel('gemini-pro') 
+else:
+    st.error("API Key missing!")
 
-# File Upload
-uploaded_file = st.file_uploader("Upload your Financial Data (CSV or XLSX)", type=["csv", "xlsx"])
+file = st.file_uploader("Upload Financial CSV", type=["csv"])
 
-if uploaded_file:
-    # Read the data
-    if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
+if file:
+    df = pd.read_csv(file)
+    st.success("File Loaded!")
     
-    st.success("File uploaded successfully!")
-    st.dataframe(df.head(10)) # Show first 10 rows
-
     if st.button("🚀 Run AI Analysis"):
-        with st.spinner("Gemini AI is analyzing your finances..."):
+        with st.spinner("Connecting to Google Gemini..."):
             try:
-                # Convert data to string for AI
-                data_summary = df.to_string()
-                prompt = f"Act as a professional financial analyst. Analyze these financial figures and provide a clear report in English with: 1. Key Highlights, 2. Potential Risks, and 3. Recommendations for improvement:\n\n{data_summary}"
+                data_summary = df.head(30).to_string()
+                prompt = f"Analyze these financial figures and provide a summary report in English:\n\n{data_summary}"
                 
+                # Using the standard content generation
                 response = model.generate_content(prompt)
                 
-                st.markdown("---")
                 st.markdown("### 🔍 AI Financial Report")
                 st.write(response.text)
             except Exception as e:
                 st.error(f"Analysis failed: {e}")
 
 st.markdown("---")
-st.caption("Developed by Salem | Powered by Google Gemini AI (Free Tier)")
+st.caption("Developed by Salem | Powered by Google Gemini")
