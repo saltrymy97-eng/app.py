@@ -6,39 +6,47 @@ st.set_page_config(page_title="FinDiagnostix AI", page_icon="📈", layout="wide
 
 st.title("📊 FinDiagnostix AI")
 st.subheader("Next-Gen Financial Diagnostic Tool")
-st.markdown("---")
 
+# 1. Configuration
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    # This specific naming convention bypasses the 404 v1beta error
-    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
 else:
-    st.error("Missing API Key!")
+    st.error("Missing API Key in Secrets!")
 
-uploaded_file = st.file_uploader("Upload your financial dataset (CSV format)", type=["csv"])
+uploaded_file = st.file_uploader("Upload Financial CSV", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.success("Data uploaded successfully!")
+    st.success("Data Loaded Successfully!")
     
-    with st.expander("👁️ Preview Raw Data"):
-        st.dataframe(df.head(10), use_container_width=True)
+    with st.expander("Preview Data"):
+        st.dataframe(df.head(10))
 
-    if st.button("🚀 Run AI Diagnostic"):
-        with st.spinner("Gemini AI is processing..."):
+    if st.button("🚀 Run AI Analysis"):
+        with st.spinner("AI is analyzing your data..."):
             try:
-                data_summary = df.head(50).to_string()
-                prompt = f"Analyze these finances and provide a report in English (Summary, Risks, Tips):\n\n{data_summary}"
+                # محاولة استخدام النموذج الأحدث
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                data_summary = df.head(30).to_string()
+                prompt = f"Analyze these finances and give a professional report in English (Summary, Risks, Recommendations):\n\n{data_summary}"
                 
                 response = model.generate_content(prompt)
+                
                 st.markdown("---")
                 st.header("🔍 AI Financial Report")
                 st.markdown(response.text)
                 
             except Exception as e:
-                # This helps us see exactly what's wrong if it fails again
-                st.error(f"Analysis failed: {str(e)}")
+                # محاولة بديلة في حال فشل النموذج الأول (Plan B)
+                try:
+                    model_backup = genai.GenerativeModel('gemini-pro')
+                    response = model_backup.generate_content(prompt)
+                    st.markdown("---")
+                    st.header("🔍 AI Financial Report (Backup Model)")
+                    st.markdown(response.text)
+                except Exception as e2:
+                    st.error(f"Analysis failed. Please check your API quota or region. Error: {str(e2)}")
 
 st.markdown("---")
 st.caption("Developed by Salem | Powered by Google Gemini AI")
-                
