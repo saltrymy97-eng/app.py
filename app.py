@@ -1,78 +1,55 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from groq import Groq
 
-# Page Configuration
-st.set_page_config(page_title="FinDiagnostix AI", page_icon="📊", layout="wide")
+# Page Config
+st.set_page_config(page_title="FinDiagnostix AI", page_icon="📈", layout="wide")
 
-# Header
-st.title("📊 FinDiagnostix AI")
-st.subheader("Next-Generation Financial Diagnostic Tool")
-st.markdown("---")
+st.title("📊 FinDiagnostix AI (Powered by Groq)")
+st.subheader("High-Speed Financial Diagnosis")
 
 # API Configuration
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+if "GROQ_API_KEY" in st.secrets:
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
-    st.error("API Key not found! Please add GEMINI_API_KEY to Streamlit Secrets.")
+    st.error("Missing GROQ_API_KEY in Secrets!")
 
-# File Upload
-uploaded_file = st.file_uploader("Upload your financial data (CSV format)", type=["csv"])
+uploaded_file = st.file_uploader("Upload Financial CSV", type=["csv"])
 
 if uploaded_file:
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success("File uploaded successfully!")
-        
-        with st.expander("👁️ Preview Raw Data"):
-            st.dataframe(df.head(10), use_container_width=True)
+    df = pd.read_csv(uploaded_file)
+    st.success("File Uploaded Successfully!")
+    
+    with st.expander("👁️ View Data Preview"):
+        st.dataframe(df.head(10), use_container_width=True)
 
-        # Analysis Button
-        if st.button("🚀 Run AI Diagnostic"):
-            with st.spinner("Gemini AI is analyzing your data..."):
-                try:
-                    # Preparing data summary
-                    data_summary = df.head(50).to_string()
-                    
-                    # Defining the prompt
-                    prompt = f"""
-                    Act as a professional financial analyst. 
-                    Analyze the following data and provide a report in English:
-                    1. Executive Summary
-                    2. Key Findings & Metrics
-                    3. Potential Risks
-                    4. Strategic Recommendations
-                    
-                    Data:
-                    {data_summary}
-                    """
-                    
-                    # 💡 Using the model name as suggested by the system (with models/ prefix)
-                    # We will try the most stable version 'gemini-1.5-flash'
-                    model = genai.GenerativeModel('models/gemini-1.5-flash')
-                    
-                    response = model.generate_content(prompt)
-                    
-                    st.markdown("---")
-                    st.header("🔍 AI Financial Analysis Report")
-                    st.markdown(response.text)
-                    
-                except Exception as e:
-                    # Fallback to 'gemini-pro' if flash is not available
-                    try:
-                        model_pro = genai.GenerativeModel('models/gemini-pro')
-                        response = model_pro.generate_content(prompt)
-                        st.markdown("---")
-                        st.header("🔍 AI Financial Analysis Report")
-                        st.markdown(response.text)
-                    except Exception as e2:
-                        st.error(f"Analysis Failed: {str(e2)}")
-                        st.info("Tip: Ensure your API key is active and your region is supported.")
-                        
-    except Exception as e:
-        st.error(f"Error reading the file: {e}")
+    if st.button("🚀 Run Instant AI Analysis"):
+        with st.spinner("Groq AI is crunching the numbers..."):
+            try:
+                # Prepare data summary
+                data_summary = df.head(50).to_string()
+                
+                # Groq API Call
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a professional financial analyst. Provide reports in English with Executive Summary, Risks, and Recommendations."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Analyze this financial data:\n\n{data_summary}",
+                        }
+                    ],
+                    model="llama3-8b-8192", # One of the fastest models
+                )
+                
+                st.markdown("---")
+                st.header("🔍 AI Financial Report")
+                st.write(chat_completion.choices[0].message.content)
+                
+            except Exception as e:
+                st.error(f"Analysis failed: {str(e)}")
 
-# Footer
 st.markdown("---")
-st.caption("Developed by Salem | Powered by Google Gemini AI")
-                        
+st.caption("Developed by Salem | Powered by Groq Llama 3")
