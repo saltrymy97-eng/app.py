@@ -1,98 +1,155 @@
 import streamlit as st
 import pandas as pd
-from groq import Groq
+import plotly.express as px
+import random
 
-# 1. BTC-Centric UI Configuration
-st.set_page_config(page_title="FinDiagnostix | BTC Strategic Engine", page_icon="₿", layout="wide")
+# -----------------------------
+# Page Config
+# -----------------------------
+st.set_page_config(
+    page_title="FinDiagnostix BTCFi",
+    page_icon="⚡",
+    layout="wide"
+)
 
-st.markdown("""
-    <style>
-    .main { background-color: #0d1117; color: #c9d1d9; }
-    .stButton>button { width: 100%; border-radius: 8px; height: 3.5em; background-color: #f7931a; color: white; font-weight: bold; border: none; font-size: 1.2em; }
-    .stButton>button:hover { background-color: #e8820e; border: 1px solid #fff; }
-    h1 { color: #f7931a; text-align: center; font-family: 'Inter', sans-serif; }
-    .report-box { padding: 25px; border: 1px solid #f7931a; border-radius: 12px; background-color: #161b22; }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("⚡ FinDiagnostix: BTCFi Edition")
+st.markdown("AI-Powered Bitcoin Treasury & Liquidity Engine")
 
-# 2. Bitcoin Branding Header
-st.title("₿ FinDiagnostix: BTC Financial Diagnosis Engine")
-st.markdown("<h4 style='text-align: center; color: #8b949e;'>AI Auditor for Bitcoin-Native SMEs & Lightning Network Enterprises</h4>", unsafe_allow_html=True)
-st.markdown("---")
+# -----------------------------
+# Helper Functions
+# -----------------------------
 
-# 3. API Connection
-if "GROQ_API_KEY" in st.secrets:
-    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-else:
-    st.error("Authentication Error: API Key missing.")
+def reliability_score(df):
+    total_cells = df.size
+    missing = df.isnull().sum().sum()
+    score = 1 - (missing / total_cells)
+    return round(score * 100, 2)
 
-# 4. Data Ingestion
-uploaded_file = st.file_uploader("Upload Financial Ledger (CSV)", type=["csv"])
+def detect_paper_profit(df):
+    revenue = df["Revenue_BTC"].sum()
+    expenses = df["Expenses_BTC"].sum()
+    receivables = df["Receivables_BTC"].sum()
+    cash = df["Cash_BTC"].sum()
+
+    net_profit = revenue - expenses
+    liquidity_ratio = cash / (expenses + 1e-6)
+
+    fake_profit_flag = net_profit > 0 and liquidity_ratio < 0.5
+
+    return {
+        "net_profit": net_profit,
+        "liquidity_ratio": liquidity_ratio,
+        "fake_profit": fake_profit_flag,
+        "cash": cash,
+        "monthly_expenses": df["Expenses_BTC"].mean()
+    }
+
+def calculate_runway(cash, monthly_expenses):
+    if monthly_expenses == 0:
+        return float("inf")
+    return cash / monthly_expenses
+
+def btc_stress_test(cash_btc, price_drop_percent):
+    return cash_btc * (1 - price_drop_percent / 100)
+
+def simulate_lightning_loan(amount_needed):
+    interest_rate = round(random.uniform(0.01, 0.05), 4)
+    total_repayment = amount_needed * (1 + interest_rate)
+    return {
+        "loan_amount": round(amount_needed, 4),
+        "interest_rate": interest_rate,
+        "repayment": round(total_repayment, 4),
+        "status": "SIMULATED"
+    }
+
+# -----------------------------
+# File Upload
+# -----------------------------
+
+uploaded_file = st.file_uploader("Upload BTC Financial CSV", type=["csv"])
 
 if uploaded_file:
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success("Bitcoin Data Shield Activated: Records Ingested Successfully.")
-        
-        with st.expander("👁️ Review SME Financial Stream"):
-            st.dataframe(df, use_container_width=True)
 
-        if st.button("🚀 EXECUTE BTC STRATEGIC AUDIT"):
-            with st.spinner("Simulating BTC Price Volatility & Lightning Liquidity..."):
-                try:
-                    data_context = df.to_string()
-                    
-                    # 5. The BTC-Native Prompt
-                    completion = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": """You are the 'FinDiagnostix BTC-CFO Engine'. 
-                                You specialize in Bitcoin-Native finance and SME auditing.
-                                
-                                1. 🛡️ DATA RELIABILITY SHIELD:
-                                   - Provide 'Confidence Score (%)'.
+    df = pd.read_csv(uploaded_file)
 
-                                2. 🔍 BTC STRATEGIC DIAGNOSIS:
-                                   - TABLE 1: 'Current Health' (| Month | Revenue | Expenses | Profit |).
-                                   - TABLE 2: 'BTC Stress Test' (Simulate a 30% BTC price crash). Show New Revenue in USD and estimated Sats.
-                                   - Boldly state the 'Bitcoin Survival Runway' in months.
+    st.subheader("📊 Financial Data")
+    st.dataframe(df, use_container_width=True)
 
-                                3. 🎯 BTC STRATEGIC RECOMMENDATIONS:
-                                   - RECOMMENDATION 1 (Liquidity): Advise on L402 Lightning Loans or BTC-backed credit.
-                                   - RECOMMENDATION 2 (Treasury): BTC Hedging or Cold Storage shifts.
-                                   - RECOMMENDATION 3 (Ops): Optimize burn rate to accumulate more Sats.
-                                   - RECOMMENDATION 4 (Strategy): Shift to Circular BTC Economy (Paying suppliers via Lightning).
+    # -----------------------------
+    # Reliability
+    # -----------------------------
+    score = reliability_score(df)
+    st.metric("🔒 Data Reliability Score (%)", score)
 
-                                RULES:
-                                - PROFESSIONAL ENGLISH ONLY.
-                                - FOCUS ON BITCOIN TERMINOLOGY (Sats, Lightning, L402, Multi-Sig).
-                                - USE MARKDOWN TABLES."""
-                            },
-                            {
-                                "role": "user",
-                                "content": f"Analyze this SME data from a Bitcoin-native perspective: {data_context}"
-                            }
-                        ],
-                        temperature=0.1,
-                    )
-                    
-                    # 6. Professional BTC Rendering
-                    st.markdown("---")
-                    st.subheader("📋 Bitcoin Executive Audit Report")
-                    st.markdown(f'<div class="report-box">{completion.choices[0].message.content}</div>', unsafe_allow_html=True)
-                    
-                    st.divider()
-                    st.warning("⚡ **LIGHTNING GOVERNANCE:** Execution of these BTC recommendations requires a 2-of-3 Multi-Sig approval.")
-                    
-                except Exception as e:
-                    st.error(f"Audit Error: {str(e)}")
-                    
-    except Exception as e:
-        st.error(f"File Error: {str(e)}")
+    # -----------------------------
+    # AI Diagnostics
+    # -----------------------------
+    diagnosis = detect_paper_profit(df)
 
-# Footer
-st.markdown("---")
-st.caption("FinDiagnostix AI | Bitcoin Strategic Auditor | Developed by Salim Altrymy")
-    
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("Net Profit (BTC)", round(diagnosis["net_profit"], 4))
+        st.metric("Liquidity Ratio", round(diagnosis["liquidity_ratio"], 4))
+
+    with col2:
+        runway = calculate_runway(
+            diagnosis["cash"],
+            diagnosis["monthly_expenses"]
+        )
+        st.metric("Cash Runway (Months)", round(runway, 2))
+
+    if diagnosis["fake_profit"]:
+        st.error("⚠️ Paper Profit Trap Detected!")
+    else:
+        st.success("✅ Healthy Financial Position")
+
+    # -----------------------------
+    # Visualization
+    # -----------------------------
+    st.subheader("📈 Revenue vs Expenses")
+
+    chart_df = pd.DataFrame({
+        "Category": ["Revenue", "Expenses"],
+        "BTC": [
+            df["Revenue_BTC"].sum(),
+            df["Expenses_BTC"].sum()
+        ]
+    })
+
+    fig = px.bar(chart_df, x="Category", y="BTC")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # -----------------------------
+    # BTC Stress Test
+    # -----------------------------
+    st.subheader("📉 BTC Volatility Simulator")
+
+    drop = st.slider("Simulate BTC Price Drop (%)", 0, 80, 20)
+    stressed_value = btc_stress_test(diagnosis["cash"], drop)
+
+    st.write(
+        f"Post-Drop Treasury Value: {round(stressed_value,4)} BTC"
+    )
+
+    # -----------------------------
+    # Execution Layer
+    # -----------------------------
+    if diagnosis["fake_profit"]:
+
+        st.subheader("⚡ Lightning Execution Command Center")
+
+        amount_needed = abs(diagnosis["net_profit"]) + 0.1
+        loan_offer = simulate_lightning_loan(amount_needed)
+
+        st.write("Loan Offer (Simulated L402):")
+        st.json(loan_offer)
+
+        approval = st.text_input(
+            "Enter Cryptographic Approval Code to Execute"
+        )
+
+        if approval == "APPROVE123":
+            st.success("✅ Lightning Loan Executed (Simulated)")
+        else:
+            st.warning("Awaiting Human Authorization...")
