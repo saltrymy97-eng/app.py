@@ -1,155 +1,107 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import random
+import plotly.graph_objects as go
 
-# -----------------------------
-# Page Config
-# -----------------------------
-st.set_page_config(
-    page_title="FinDiagnostix BTCFi",
-    page_icon="⚡",
-    layout="wide"
-)
+# --- 1. CONFIGURATION & STYLING ---
+st.set_page_config(page_title="FinDiagnostix | BTC AI CFO", page_icon="📈", layout="wide")
 
-st.title("⚡ FinDiagnostix: BTCFi Edition")
-st.markdown("AI-Powered Bitcoin Treasury & Liquidity Engine")
+st.markdown("""
+    <style>
+    .main { background-color: #0d1117; color: #c9d1d9; }
+    .stMetric { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; border-left: 5px solid #f7931a; }
+    .action-card { background-color: #1c2128; border-left: 5px solid #238636; padding: 20px; border-radius: 8px; margin: 10px 0; }
+    .warning-card { background-color: #1c2128; border-left: 5px solid #da3633; padding: 20px; border-radius: 8px; }
+    .shield-box { background-color: #0d1117; border: 1px dashed #f7931a; padding: 10px; border-radius: 10px; text-align: center; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# -----------------------------
-# Helper Functions
-# -----------------------------
+# --- 2. SIDEBAR: DATA INPUT ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/5968/5968260.png", width=80)
+st.sidebar.title("💳 Financial Ledger")
 
-def reliability_score(df):
-    total_cells = df.size
-    missing = df.isnull().sum().sum()
-    score = 1 - (missing / total_cells)
-    return round(score * 100, 2)
+with st.sidebar:
+    revenue = st.number_input("Monthly Revenue ($)", value=120000)
+    cash = st.number_input("Current Cash ($)", value=18000)
+    receivables = st.number_input("Accounts Receivable ($)", value=75000)
+    payables = st.number_input("Accounts Payable ($)", value=55000)
+    burn_rate = st.number_input("Monthly Expenses ($)", value=25000)
+    
+    st.write("---")
+    # --- DATA SHIELD LOGIC ---
+    reliability_score = 100
+    shield_issues = []
+    if burn_rate > revenue: 
+        reliability_score -= 30
+        shield_issues.append("Negative Cash Flow")
+    if cash < (burn_rate * 0.5): 
+        reliability_score -= 20
+        shield_issues.append("Low Liquidity Buffer")
+    
+    st.markdown(f"""
+    <div class="shield-box">
+        <h4 style='color:#f7931a; margin:0;'>🛡️ DATA SHIELD</h4>
+        <h2 style='margin:0;'>{reliability_score}%</h2>
+        <p style='font-size:0.8em;'>Reliability Score</p>
+    </div>
+    """, unsafe_allow_html=True)
+    for issue in shield_issues:
+        st.caption(f"⚠️ {issue}")
 
-def detect_paper_profit(df):
-    revenue = df["Revenue_BTC"].sum()
-    expenses = df["Expenses_BTC"].sum()
-    receivables = df["Receivables_BTC"].sum()
-    cash = df["Cash_BTC"].sum()
+# --- 3. CORE LOGIC ---
+paper_profit_gap = receivables - payables
+# حساب فترة البقاء بالشهور
+runway_months = round(cash / burn_rate, 1) if burn_rate > 0 else 99
+btc_stress_cash = cash * 0.7  # محاكاة هبوط البيتكوين 30%
 
-    net_profit = revenue - expenses
-    liquidity_ratio = cash / (expenses + 1e-6)
+# --- 4. MAIN INTERFACE ---
+st.title("📈 FinDiagnostix: BTC Edition")
+st.markdown("*Strategic AI Financial Diagnosis for BTC-Native SMEs*")
+st.write("---")
 
-    fake_profit_flag = net_profit > 0 and liquidity_ratio < 0.5
+# Metrics Row
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Net Liquidity", f"${cash:,}", "-12%")
+m2.metric("Survival Runway", f"{runway_months} Mo", "Critical" if runway_months < 1 else "Stable")
+m3.metric("Paper Profit Gap", f"${paper_profit_gap:,}")
+m4.metric("BTC Stress Cash", f"${btc_stress_cash:,.0f}", "-30% Risk")
 
-    return {
-        "net_profit": net_profit,
-        "liquidity_ratio": liquidity_ratio,
-        "fake_profit": fake_profit_flag,
-        "cash": cash,
-        "monthly_expenses": df["Expenses_BTC"].mean()
-    }
+# Visualizing the Gap
+st.write("### 🧠 Diagnostic Visualization")
+fig = go.Figure(data=[
+    go.Bar(name='Available Cash', x=['Liquidity Status'], y=[cash], marker_color='#238636'),
+    go.Bar(name='Receivables (Paper)', x=['Liquidity Status'], y=[receivables], marker_color='#58a6ff'),
+    go.Bar(name='Payables (Debt)', x=['Liquidity Status'], y=[payables], marker_color='#da3633')
+])
+fig.update_layout(barmode='group', template="plotly_dark", height=300, margin=dict(l=20, r=20, t=20, b=20))
+st.plotly_chart(fig, use_container_width=True)
 
-def calculate_runway(cash, monthly_expenses):
-    if monthly_expenses == 0:
-        return float("inf")
-    return cash / monthly_expenses
 
-def btc_stress_test(cash_btc, price_drop_percent):
-    return cash_btc * (1 - price_drop_percent / 100)
 
-def simulate_lightning_loan(amount_needed):
-    interest_rate = round(random.uniform(0.01, 0.05), 4)
-    total_repayment = amount_needed * (1 + interest_rate)
-    return {
-        "loan_amount": round(amount_needed, 4),
-        "interest_rate": interest_rate,
-        "repayment": round(total_repayment, 4),
-        "status": "SIMULATED"
-    }
+# Analysis Results
+if cash < payables:
+    st.markdown(f"""
+    <div class="warning-card">
+        <h3 style='color:#da3633; margin:0;'>⚠️ CRITICAL: The Paper Profit Trap</h3>
+        <p>Your revenue is <b>${revenue:,}</b>, but you cannot cover your <b>${payables:,}</b> debts with current cash. 
+        You are legally profitable but operationally insolvent.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.write("#### 🎯 AI Strategic Recommendations")
+    col_rec1, col_rec2 = st.columns(2)
+    with col_rec1:
+        st.markdown("""
+        <div class="action-card">
+            <b>1. BTC Liquidity (L402):</b> Use your BTC as collateral for a Lightning-fast loan of <b>$20,000</b> to bridge the payables gap.
+        </div>
+        """, unsafe_allow_html=True)
+    with col_rec2:
+        st.markdown("""
+        <div class="action-card">
+            <b>2. Receivables Hack:</b> Offer a 2% discount for payments made via <b>Bitcoin Lightning</b> to speed up collection by 40%.
+        </div>
+        """, unsafe_allow_html=True)
 
-# -----------------------------
-# File Upload
-# -----------------------------
-
-uploaded_file = st.file_uploader("Upload BTC Financial CSV", type=["csv"])
-
-if uploaded_file:
-
-    df = pd.read_csv(uploaded_file)
-
-    st.subheader("📊 Financial Data")
-    st.dataframe(df, use_container_width=True)
-
-    # -----------------------------
-    # Reliability
-    # -----------------------------
-    score = reliability_score(df)
-    st.metric("🔒 Data Reliability Score (%)", score)
-
-    # -----------------------------
-    # AI Diagnostics
-    # -----------------------------
-    diagnosis = detect_paper_profit(df)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric("Net Profit (BTC)", round(diagnosis["net_profit"], 4))
-        st.metric("Liquidity Ratio", round(diagnosis["liquidity_ratio"], 4))
-
-    with col2:
-        runway = calculate_runway(
-            diagnosis["cash"],
-            diagnosis["monthly_expenses"]
-        )
-        st.metric("Cash Runway (Months)", round(runway, 2))
-
-    if diagnosis["fake_profit"]:
-        st.error("⚠️ Paper Profit Trap Detected!")
-    else:
-        st.success("✅ Healthy Financial Position")
-
-    # -----------------------------
-    # Visualization
-    # -----------------------------
-    st.subheader("📈 Revenue vs Expenses")
-
-    chart_df = pd.DataFrame({
-        "Category": ["Revenue", "Expenses"],
-        "BTC": [
-            df["Revenue_BTC"].sum(),
-            df["Expenses_BTC"].sum()
-        ]
-    })
-
-    fig = px.bar(chart_df, x="Category", y="BTC")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # -----------------------------
-    # BTC Stress Test
-    # -----------------------------
-    st.subheader("📉 BTC Volatility Simulator")
-
-    drop = st.slider("Simulate BTC Price Drop (%)", 0, 80, 20)
-    stressed_value = btc_stress_test(diagnosis["cash"], drop)
-
-    st.write(
-        f"Post-Drop Treasury Value: {round(stressed_value,4)} BTC"
-    )
-
-    # -----------------------------
-    # Execution Layer
-    # -----------------------------
-    if diagnosis["fake_profit"]:
-
-        st.subheader("⚡ Lightning Execution Command Center")
-
-        amount_needed = abs(diagnosis["net_profit"]) + 0.1
-        loan_offer = simulate_lightning_loan(amount_needed)
-
-        st.write("Loan Offer (Simulated L402):")
-        st.json(loan_offer)
-
-        approval = st.text_input(
-            "Enter Cryptographic Approval Code to Execute"
-        )
-
-        if approval == "APPROVE123":
-            st.success("✅ Lightning Loan Executed (Simulated)")
-        else:
-            st.warning("Awaiting Human Authorization...")
+# Footer
+st.write("---")
+st.caption("FinDiagnostix AI Engine | Developed by Salim Altrymy | v2.0 Stable")
